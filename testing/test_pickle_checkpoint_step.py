@@ -23,7 +23,6 @@ import os
 import pickle
 
 import numpy as np
-from py._path.local import LocalPath
 
 from neuraxle.base import ExecutionContext, Identity
 from neuraxle.base import NonFittableMixin
@@ -72,7 +71,7 @@ def create_pipeline(tmpdir, pickle_checkpoint_step, tape, hyperparameters=None, 
     return pipeline
 
 
-def test_when_no_hyperparams_should_save_checkpoint_pickle(tmpdir: LocalPath):
+def test_when_no_hyperparams_should_save_checkpoint_pickle(tmpdir):
     tape = TapeCallbackFunction()
     pickle_checkpoint_step = DefaultCheckpoint()
     pipeline = create_pipeline(tmpdir, pickle_checkpoint_step, tape)
@@ -88,7 +87,7 @@ def test_when_no_hyperparams_should_save_checkpoint_pickle(tmpdir: LocalPath):
     assert os.path.exists(os.path.join(tmpdir, 'ResumablePipeline', 'pickle_checkpoint', 'eo', '1.pickle'))
 
 
-def test_when_hyperparams_should_save_checkpoint_pickle(tmpdir: LocalPath):
+def test_when_hyperparams_should_save_checkpoint_pickle(tmpdir):
     tape = TapeCallbackFunction()
     pickle_checkpoint_step = DefaultCheckpoint()
     pipeline = create_pipeline(tmpdir, pickle_checkpoint_step, tape, HyperparameterSamples({"a__learning_rate": 1}))
@@ -109,7 +108,7 @@ def test_when_hyperparams_should_save_checkpoint_pickle(tmpdir: LocalPath):
         os.path.join(tmpdir, 'ResumablePipeline', 'pickle_checkpoint', 'eo', '898a67b2f5eeae6393ca4b3162ba8e3d.pickle'))
 
 
-def test_when_no_hyperparams_and_saved_same_pipeline_should_load_checkpoint_pickle(tmpdir: LocalPath):
+def test_when_no_hyperparams_and_saved_same_pipeline_should_load_checkpoint_pickle(tmpdir):
     # Given
     tape = TapeCallbackFunction()
 
@@ -134,7 +133,7 @@ def test_when_no_hyperparams_and_saved_same_pipeline_should_load_checkpoint_pick
     assert actual_tape == EXPECTED_TAPE_AFTER_CHECKPOINT
 
 
-def test_when_hyperparams_and_saved_same_pipeline_should_load_checkpoint_pickle(tmpdir: LocalPath):
+def test_when_hyperparams_and_saved_same_pipeline_should_load_checkpoint_pickle(tmpdir):
     # Given
     tape = TapeCallbackFunction()
 
@@ -161,7 +160,7 @@ def test_when_hyperparams_and_saved_same_pipeline_should_load_checkpoint_pickle(
     assert actual_tape == EXPECTED_TAPE_AFTER_CHECKPOINT
 
 
-def test_when_hyperparams_and_saved_no_pipeline_should_not_load_checkpoint_pickle(tmpdir: LocalPath):
+def test_when_hyperparams_and_saved_no_pipeline_should_not_load_checkpoint_pickle(tmpdir):
     # Given
     tape = TapeCallbackFunction()
     pickle_checkpoint_step = DefaultCheckpoint()
@@ -196,7 +195,7 @@ def setup_pickle_checkpoint(current_id, data_input, expected_output, pickle_chec
         pickle.dump((current_id, data_input, expected_output), file)
 
 
-def test_pickle_checkpoint_step_should_load_data_container(tmpdir: LocalPath):
+def test_pickle_checkpoint_step_should_load_data_container(tmpdir):
     initial_data_inputs = [1, 2]
     initial_expected_outputs = [2, 3]
 

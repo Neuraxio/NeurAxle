@@ -36,7 +36,7 @@ from neuraxle.pipeline import DEFAULT_CACHE_FOLDER
 from neuraxle.steps.misc import VALUE_CACHING
 
 
-class ValueCachingWrapper(MetaStepMixin, NonFittableMixin, NonTransformableMixin, BaseStep):
+class ValueCachingWrapper(MetaStepMixin, BaseStep):
     """
     Value caching wrapper wraps a step to cache the values.
     """

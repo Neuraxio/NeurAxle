@@ -169,8 +169,7 @@ class Pipeline(BasePipeline):
 
         return self
 
-    def _fit_transform_data_container(self, data_container: DataContainer, context: ExecutionContext) -> (
-            'Pipeline', DataContainer):
+    def _fit_transform_data_container(self, data_container: DataContainer, context: ExecutionContext) -> ('Pipeline', DataContainer):
         """
         After loading the last checkpoint, fit transform each pipeline steps
 
@@ -207,8 +206,7 @@ class Pipeline(BasePipeline):
 
         return data_container
 
-    def _load_checkpoint(self, data_container: DataContainer, context: ExecutionContext) -> \
-            Tuple[NamedTupleList, DataContainer]:
+    def _load_checkpoint(self, data_container: DataContainer, context: ExecutionContext) -> Tuple[NamedTupleList, DataContainer]:
         """
         Try loading a pipeline cache with the passed data container.
         If pipeline cache loading succeeds, find steps left to do,
@@ -267,8 +265,7 @@ class ResumablePipeline(ResumableStepMixin, Pipeline):
         self.hyperparams = loaded_self.hyperparams
         self.hyperparams_space = loaded_self.hyperparams_space
 
-    def _get_starting_step_info(self, data_container: DataContainer, context: ExecutionContext) -> Tuple[
-        int, DataContainer]:
+    def _get_starting_step_info(self, data_container: DataContainer, context: ExecutionContext) -> Tuple[int, DataContainer]:
         """
         Find the index of the latest step that can be resumed
 
@@ -306,17 +303,75 @@ class ResumablePipeline(ResumableStepMixin, Pipeline):
         return False
 
 
-class MiniBatchSequentialPipeline(Pipeline):
+class CustomPipelineMixin:
+    def transform(self, data_inputs: Any):
+        """
+        :param data_inputs: the data input to transform
+        :return: transformed data inputs
+        """
+        data_container = DataContainer(data_inputs=data_inputs, current_ids=None)
+
+        self.hash_data_container(data_container)
+
+        context = ExecutionContext(self.cache_folder, ExecutionMode.TRANSFORM)
+        data_container = self.handle_transform(data_container, context)
+
+        return data_container.data_inputs
+
+    def fit(self, data_inputs, expected_outputs=None) -> 'Pipeline':
+        """
+        :param data_inputs: the data input to fit on
+        :param expected_outputs: the expected data output to fit on
+        :return: the pipeline itself
+        """
+        self.setup()
+
+        data_container = DataContainer(data_inputs=data_inputs, current_ids=None, expected_outputs=expected_outputs)
+        current_ids = self.hash(data_container)
+        data_container.set_current_ids(current_ids)
+
+        context = ExecutionContext(self.cache_folder, ExecutionMode.FIT_TRANSFORM)
+        new_self, data_container = self.handle_fit(data_container, context)
+
+        return new_self
+
+    def fit_transform(self, data_inputs, expected_outputs=None) -> ('Pipeline', Any):
+        """
+        :param data_inputs: the data input to fit on
+        :param expected_outputs: the expected data output to fit on
+        :return: the pipeline itself
+        """
+        self.setup()
+
+        data_container = DataContainer(data_inputs=data_inputs, current_ids=None, expected_outputs=expected_outputs)
+
+        data_container = self.hash_data_container(data_container)
+
+        context = ExecutionContext(self.cache_folder, ExecutionMode.FIT_TRANSFORM)
+        new_self, data_container = self.handle_fit_transform(data_container, context)
+
+        return new_self, data_container.data_inputs
+
+
+class MiniBatchSequentialPipeline(CustomPipelineMixin, Pipeline):
     """
     Mini Batch Sequential Pipeline class to create a pipeline processing data inputs in batch.
     Provide a default batch size :
+
     .. code-block:: python
+
         sub_pipelines = [SomeStep()]
         pipeline = MiniBatchSequentialPipeline(sub_pipelines, batch_size=32)
+
+
     Or manually add a :class`Barrier` step to the mini batch sequential pipeline :
+
     .. code-block:: python
+
         sub_pipelines = [SomeStep(), Joiner(32)]
         pipeline = MiniBatchSequentialPipeline(sub_pipelines)
+
+
     .. seealso::
         :class:`Pipeline`,
         :class:`Barrier`,
@@ -327,6 +382,7 @@ class MiniBatchSequentialPipeline(Pipeline):
 
     def __init__(self, steps: NamedTupleList, batch_size=None):
         Pipeline.__init__(self, steps)
+        CustomPipelineMixin.__init__(self)
         self.__validate_barriers_batch_size(batch_size)
         self.__patch_missing_barrier(batch_size)
         self.__patch_barriers_batch_size(batch_size)
@@ -364,54 +420,6 @@ class MiniBatchSequentialPipeline(Pipeline):
             self.steps_as_tuple.append(('Joiner', Joiner(batch_size)))
 
         self._refresh_steps()
-
-    def transform(self, data_inputs: Any):
-        """
-        :param data_inputs: the data input to transform
-        :return: transformed data inputs
-        """
-        data_container = DataContainer(data_inputs=data_inputs, current_ids=None)
-
-        self.hash_data_container(data_container)
-
-        context = ExecutionContext(self.cache_folder, ExecutionMode.TRANSFORM)
-        data_container = self.handle_transform(data_container, context)
-
-        return data_container.data_inputs
-
-    def fit(self, data_inputs, expected_outputs=None) -> 'Pipeline':
-        """
-        :param data_inputs: the data input to fit on
-        :param expected_outputs: the expected data output to fit on
-        :return: the pipeline itself
-        """
-        self.setup()
-
-        data_container = DataContainer(data_inputs=data_inputs, current_ids=None, expected_outputs=expected_outputs)
-        current_ids = self.hash(data_container)
-        data_container.set_current_ids(current_ids)
-
-        context = ExecutionContext(self.cache_folder, ExecutionMode.FIT_TRANSFORM)
-        new_self = self.handle_fit(data_container, context)
-
-        return new_self
-
-    def fit_transform(self, data_inputs, expected_outputs=None) -> ('Pipeline', Any):
-        """
-        :param data_inputs: the data input to fit on
-        :param expected_outputs: the expected data output to fit on
-        :return: the pipeline itself
-        """
-        self.setup()
-
-        data_container = DataContainer(data_inputs=data_inputs, current_ids=None, expected_outputs=expected_outputs)
-
-        data_container = self.hash_data_container(data_container)
-
-        context = ExecutionContext(self.cache_folder, ExecutionMode.FIT_TRANSFORM)
-        new_self, data_container = self.handle_fit_transform(data_container, context)
-
-        return new_self, data_container.data_inputs
 
     def handle_transform(self, data_container: DataContainer, context: ExecutionContext) -> DataContainer:
         """
@@ -533,8 +541,7 @@ class Barrier(NonFittableMixin, NonTransformableMixin, BaseStep, ABC):
     """
 
     @abstractmethod
-    def join_transform(self, step: TruncableSteps, data_container: DataContainer,
-                       context: ExecutionContext) -> DataContainer:
+    def join_transform(self, step: TruncableSteps, data_container: DataContainer, context: ExecutionContext) -> DataContainer:
         """
         Execute the given pipeline :func:`~neuraxle.pipeline.Pipeline.transform` with the given data container, and execution context.
 
@@ -550,8 +557,7 @@ class Barrier(NonFittableMixin, NonTransformableMixin, BaseStep, ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def join_fit_transform(self, step: Pipeline, data_container: DataContainer, context: ExecutionContext) -> Tuple[
-        'Any', DataContainer]:
+    def join_fit_transform(self, step: Pipeline, data_container: DataContainer, context: ExecutionContext) -> Tuple['Any', DataContainer]:
         """
         Execute the given pipeline :func:`~neuraxle.pipeline.Pipeline.fit_transform` with the given data container, and execution context.
 
@@ -603,8 +609,7 @@ class Joiner(Barrier):
 
         return output_data_container
 
-    def join_fit_transform(self, step: Pipeline, data_container: DataContainer, context: ExecutionContext) -> Tuple[
-        'Any', DataContainer]:
+    def join_fit_transform(self, step: Pipeline, data_container: DataContainer, context: ExecutionContext) -> Tuple['Any', DataContainer]:
         """
         Concatenate the pipeline fit transform output of each batch of self.batch_size together.
 
@@ -631,53 +636,3 @@ class Joiner(Barrier):
             )
 
         return step, output_data_container
-
-
-class CustomPipelineMixin:
-    def transform(self, data_inputs: Any):
-        """
-        :param data_inputs: the data input to transform
-        :return: transformed data inputs
-        """
-        data_container = DataContainer(data_inputs=data_inputs, current_ids=None)
-
-        self.hash_data_container(data_container)
-
-        context = ExecutionContext(self.cache_folder, ExecutionMode.TRANSFORM)
-        data_container = self.handle_transform(data_container, context)
-
-        return data_container.data_inputs
-
-    def fit(self, data_inputs, expected_outputs=None) -> 'Pipeline':
-        """
-        :param data_inputs: the data input to fit on
-        :param expected_outputs: the expected data output to fit on
-        :return: the pipeline itself
-        """
-        self.setup()
-
-        data_container = DataContainer(data_inputs=data_inputs, current_ids=None, expected_outputs=expected_outputs)
-        current_ids = self.hash(data_container)
-        data_container.set_current_ids(current_ids)
-
-        context = ExecutionContext(self.cache_folder, ExecutionMode.FIT_TRANSFORM)
-        new_self, data_container = self.handle_fit(data_container, context)
-
-        return new_self
-
-    def fit_transform(self, data_inputs, expected_outputs=None) -> ('Pipeline', Any):
-        """
-        :param data_inputs: the data input to fit on
-        :param expected_outputs: the expected data output to fit on
-        :return: the pipeline itself
-        """
-        self.setup()
-
-        data_container = DataContainer(data_inputs=data_inputs, current_ids=None, expected_outputs=expected_outputs)
-
-        data_container = self.hash_data_container(data_container)
-
-        context = ExecutionContext(self.cache_folder, ExecutionMode.FIT_TRANSFORM)
-        new_self, data_container = self.handle_fit_transform(data_container, context)
-
-        return new_self, data_container.data_inputs

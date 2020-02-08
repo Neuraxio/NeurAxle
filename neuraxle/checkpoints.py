@@ -157,7 +157,7 @@ class StepSavingCheckpointer(BaseCheckpointer):
     ) -> DataContainer:
         if self.is_for_execution_mode(context.get_execution_mode()):
             # TODO: save the context by execution mode AND data container ids / summary
-            context.copy().save_all_unsaved()
+            context.copy().save()
 
         return data_container
 
