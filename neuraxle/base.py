@@ -48,6 +48,7 @@ LOGGER_FORMAT = "[%(asctime)s][%(levelname)s][%(module)s][%(lineno)d]: %(message
 DATE_FORMAT = "%H:%M:%S"
 logging.basicConfig(format=LOGGER_FORMAT, datefmt=DATE_FORMAT, level=logging.INFO)
 
+
 class BaseHasher(ABC):
     """
     Base class to hash hyperparamters, and data input ids together.
@@ -1010,13 +1011,14 @@ class _TransformerStep(ABC):
         """
         raise NotImplementedError("TODO: Implement this method in {}.".format(self.__class__.__name__))
 
-    def teardown(self)->'BaseTransformer':
+    def teardown(self) -> 'BaseTransformer':
         """
         Applies _teardown on the step and, if applicable, its children.
         :return: self
         """
         self.apply("_teardown")
         return self
+
 
 class _FittableStep:
     """
@@ -2278,7 +2280,7 @@ class BaseTransformer(
         return self.name
 
     def get_step_by_name(self, name):
-        if self.name == name :
+        if self.name == name:
             return self
         return None
 
@@ -3350,6 +3352,14 @@ class TruncableSteps(_HasChildrenMixin, BaseStep, ABC):
         """
         return isinstance(self[-1], step_type)
 
+    def remove_step(self, step_name: str):
+        """
+        Removes step using self.popitem
+        """
+        item = self.popitem(step_name)
+        self._refresh_steps()
+        return item
+
     def __repr__(self):
 
         output = self.__class__.__name__ + '\n' \
@@ -3742,12 +3752,14 @@ class AssertExpectedOutputIsNoneMixin(WillProcessAssertionMixin):
             raise AssertionError(
                 f"Expected datacontainer.expected_outputs to be a `None` or a list of `None`. Received {data_container.expected_outputs}.")
 
+
 class AssertExpectedOutputIsNotNoneMixin(WillProcessAssertionMixin):
     def _assert(self, data_container: DataContainer, context: ExecutionContext):
         eo_empty = (data_container.expected_outputs is None) or all(v is None for v in data_container.expected_outputs)
         if eo_empty:
             raise AssertionError(
                 f"Expected datacontainer.expected_outputs to not be a `None` or a list of `None`. Received {data_container.expected_outputs}.")
+
 
 class AssertExpectedOutputIsNoneStep(AssertExpectedOutputIsNoneMixin, Identity):
     def __init__(self):
@@ -3848,7 +3860,8 @@ class _WithContextStepSaver(BaseSaver):
         :return: loaded step with context
         """
         step.context = context
-        warnings.warn("Warning! the loading of a StepWithContext instance overrides the context attribute with the one provided at loading.")
+        warnings.warn(
+            "Warning! the loading of a StepWithContext instance overrides the context attribute with the one provided at loading.")
         return step
 
     def save_step(self, step: 'StepWithContext', context: ExecutionContext) -> 'StepWithContext':

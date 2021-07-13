@@ -450,6 +450,27 @@ class ChooseOneStepOf(FeatureUnion):
 
         self._refresh_steps()
 
+    def prune(self) -> HyperparameterSamples:
+        """
+        Prune self so as to keep only the chosen step as set in the choice hyperparameter.
+        """
+        # first, get chosen step name. it looks like this:
+        chosen_step_name: str = self.get_hyperparams()["choice"]
+        # second, delete the others:
+        all_steps_names: list = [step[0] for step in self]
+        for step_name in all_steps_names:  # this for loop is defined in Truncable Steps
+            if step_name != chosen_step_name:
+                # first, remove step in self:
+                self.remove_step(step_name)
+                # then, remove step in choice:
+                self.remove_step_from_choice(
+                    step_name)
+
+        return self.hyperparams
+
+    def remove_step_from_choice(self, step_name) -> tuple:
+        return self.hyperparams.popitem(step_name)
+
 
 class ChooseOneOrManyStepsOf(FeatureUnion):
     """
@@ -528,6 +549,7 @@ class SelectNonEmptyDataInputs(TransformHandlerOnlyMixin, BaseTransformer):
                                        expected_outputs=data_container.expected_outputs)
 
         return data_container
+
 
 class SelectNonEmptyDataContainer(TransformHandlerOnlyMixin, BaseTransformer):
     """

@@ -210,8 +210,8 @@ class RecursiveDict(OrderedDict):
         return type(self)(
             separator=separator,
             **{key: value if not isinstance(value, RecursiveDict) \
-                    else value.with_separator(separator) for key, value in self.items()
-            })
+                else value.with_separator(separator) for key, value in self.items()
+               })
 
 
 class HyperparameterSamples(RecursiveDict):
