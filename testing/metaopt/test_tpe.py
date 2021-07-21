@@ -74,7 +74,7 @@ import os
 ])
 def test_tpe(expected_output_mult, pipeline, tmpdir):
     # set random seed
-    np.random.seed(77)
+    np.random.seed(42)
 
     # Given
     tpe_scores = Parallel(n_jobs=-2)(
@@ -82,7 +82,7 @@ def test_tpe(expected_output_mult, pipeline, tmpdir):
             expected_output_mult,
             pipeline,
             TreeParzenEstimatorHyperparameterSelectionStrategy(
-                number_of_initial_random_step=10,
+                number_of_initial_random_step=5,
                 quantile_threshold=0.3,
                 number_good_trials_max_cap=25,
                 number_possible_hyperparams_candidates=100,
@@ -119,7 +119,7 @@ def _test_trial_scores(
 ):
     hp_repository: InMemoryHyperparamsRepository = InMemoryHyperparamsRepository(cache_folder=str(tmpdir))
     n_epochs = 1
-    n_trials = 20
+    n_trials = 10
     auto_ml: AutoML = AutoML(
         pipeline=pipeline,
         hyperparams_optimizer=hyperparams_optimizer,

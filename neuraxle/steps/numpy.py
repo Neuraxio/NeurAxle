@@ -254,7 +254,7 @@ class AddN(BaseTransformer):
     """
 
     def __init__(self, add=1):
-        super().__init__(hyperparams=HyperparameterSamples({ 'add': add }))
+        super().__init__(hyperparams=HyperparameterSamples({'add': add }))
 
     def transform(self, data_inputs):
         if not isinstance(data_inputs, np.ndarray):

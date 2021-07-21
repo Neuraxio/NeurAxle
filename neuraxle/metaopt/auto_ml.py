@@ -154,7 +154,6 @@ class HyperparamsRepository(_Observable[Tuple['HyperparamsRepository', Trial]], 
         self._save_best_model(step, trial_hash)
         return step
 
-    @abstractmethod
     def new_trial(self, auto_ml_container: 'AutoMLContainer'):
         """
         Create a new trial with the best next hyperparams.
@@ -163,7 +162,19 @@ class HyperparamsRepository(_Observable[Tuple['HyperparamsRepository', Trial]], 
         :param auto_ml_container: auto ml data container
         :return: trial
         """
-        pass
+        hyperparams = self.hyperparameter_selection_strategy.find_next_best_hyperparams(auto_ml_container)
+        logger = self._create_logger_for_trial(auto_ml_container.trial_number)
+        logger.info('\nnew trial: {}'.format(json.dumps(hyperparams.to_nested_dict(), sort_keys=True, indent=4)))
+
+        trial = Trial(
+            hyperparams=hyperparams,
+            save_trial_function=self.save_trial,
+            logger=logger,
+            cache_folder=self.cache_folder,
+            main_metric_name=auto_ml_container.main_scoring_metric_name
+        )
+        return trial
+
 
     def _get_trial_hash(self, hp_dict):
         """
@@ -245,19 +256,6 @@ class InMemoryHyperparamsRepository(HyperparamsRepository):
         """
         self.trials.append(trial)
 
-    def new_trial(self, auto_ml_container: 'AutoMLContainer') -> 'Trial':
-        hyperparams = self.hyperparameter_selection_strategy.find_next_best_hyperparams(auto_ml_container)
-        logger = self._create_logger_for_trial(auto_ml_container.trial_number)
-        logger.info('\nnew trial: {}'.format(json.dumps(hyperparams.to_nested_dict(), sort_keys=True, indent=4)))
-
-        return Trial(
-            cache_folder=self.cache_folder,
-            save_trial_function=self.save_trial,
-            logger=logger,
-            hyperparams=hyperparams,
-            main_metric_name=auto_ml_container.main_scoring_metric_name
-        )
-
 
 class HyperparamsJSONRepository(HyperparamsRepository):
     """
@@ -337,15 +335,7 @@ class HyperparamsJSONRepository(HyperparamsRepository):
         :param auto_ml_container: auto ml container
         :return:
         """
-        hyperparams = self.hyperparameter_selection_strategy.find_next_best_hyperparams(auto_ml_container)
-        logger = self._create_logger_for_trial(auto_ml_container.trial_number)
-        trial = Trial(
-            hyperparams=hyperparams,
-            save_trial_function=self.save_trial,
-            logger=logger,
-            cache_folder=self.cache_folder,
-            main_metric_name=auto_ml_container.main_scoring_metric_name
-        )
+        trial = HyperparamsRepository.new_trial(self, auto_ml_container)
         self._save_trial(trial)
 
         return trial
